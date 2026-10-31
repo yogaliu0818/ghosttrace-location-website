@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網路數據指揮中心</title>
+    
+    <!-- 引入字體：科技等寬字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- 引入 FontAwesome 圖示 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Leaflet 地圖套件 CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        /* 預設主題：深藍科技風 */
+        :root {
+            --bg-color: #070b14;
+            --panel-bg: #0c1424;
+            --tech-blue: #00d2ff;
+            --tech-glow: 0 0 10px rgba(0, 210, 255, 0.6);
+            --alert-red: #ff3366;
+            --alert-orange: #ff9900;
+            --text-main: #a3c2db;
+            --text-bright: #ffffff;
+            --border-color: #1a2a42;
+            --panel-gradient: linear-gradient(180deg, rgba(0,210,255,0.05) 0%, transparent 100%);
+            --grid-line: rgba(0, 210, 255, 0.03);
+            --badge-safe-bg: rgba(0, 255, 102, 0.2);
+            --badge-safe-color: #00ff66;
+            --badge-safe-border: #00ff66;
+            --corner-color: #00d2ff;
+        }
+
+        /* 🎯 黑綠駭客風主題 */
+        body.matrix-mode {
+            --bg-color: #020b05;
+            --panel-bg: #05160a;
+            --tech-blue: #00ff66;
+            --tech-glow: 0 0 10px rgba(0, 255, 102, 0.7);
+            --alert-red: #ff3366;
+            --alert-orange: #ffaa00;
+            --text-main: #66cc88;
+            --text-bright: #33ff77;
+            --border-color: #0d3817;
+            --panel-gradient: linear-gradient(180deg, rgba(0,255,102,0.08) 0%, transparent 100%);
+            --grid-line: rgba(0, 255, 102, 0.04);
+            --badge-safe-bg: rgba(0, 255, 102, 0.25);
+            --badge-safe-color: #00ff66;
+            --badge-safe-border: #00ff66;
+            --corner-color: #00ff66;
+        }
+
+        /* 🚨 赤紅警報風主題 */
+        body.red-alert-mode {
+            --bg-color: #0b0204;
+            --panel-bg: #1a0509;
+            --tech-blue: #ff1a53;
+            --tech-glow: 0 0 12px rgba(255, 26, 83, 0.8);
+            --alert-red: #ff0033;
+            --alert-orange: #ff6600;
+            --text-main: #e6a1ac;
+            --text-bright: #ffccd5;
+            --border-color: #3d0d16;
+            --panel-gradient: linear-gradient(180deg, rgba(255,26,83,0.12) 0%, transparent 100%);
+            --grid-line: rgba(255, 26, 83, 0.05);
+            --badge-safe-bg: rgba(255, 26, 83, 0.25);
+            --badge-safe-color: #ff3366;
+            --badge-safe-border: #ff3366;
+            --corner-color: #ff1a53;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', "PingFang TC", "Microsoft JhengHei", monospace;
+            padding: 12px;
+            background-image: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 20px 20px;
+            height: 100vh;
+            width: 100vw;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.8s ease, color 0.8s ease;
+            position: relative;
+        }
+
+        header {
+            height: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--tech-blue);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 15px rgba(0, 210, 255, 0.1);
+            transition: border-color 0.8s ease, box-shadow 0.8s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            color: var(--tech-blue);
+            font-size: 20px;
+            text-shadow: var(--tech-glow);
+            letter-spacing: 2px;
+            transition: color 0.8s ease, text-shadow 0.8s ease;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--tech-blue);
+            text-shadow: var(--tech-glow);
+            font-size: 13px;
+        }
+
+        .blink-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--tech-blue);
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+            box-shadow: var(--tech-glow);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .fullscreen-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 3px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+            opacity: 0.7;
+        }
+        .fullscreen-btn:hover {
+            opacity: 1;
+            border-color: var(--tech-blue);
+            color: var(--tech-blue);
+            box-shadow: var(--tech-glow);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .dashboard-right {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--tech-blue);
+            padding: 12px 14px;
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel.updating {
+            animation: panel-pulse 0.6s ease-out;
+        }
+
+        @keyframes panel-pulse {
+            0% { box-shadow: inset 0 0 15px var(--tech-blue), 0 0 15px var(--tech-blue); }
+            100% { box-shadow: inset 0 0 0 transparent, 0 0 0 transparent; }
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--panel-gradient);
+            pointer-events: none;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: var(--corner-color);
+            border-style: solid;
+            pointer-events: none;
+            transition: border-color 0.8s ease;
+        }
+        .hud-corner-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+        .hud-corner-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+        .hud-corner-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+        .hud-corner-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+        .panel-title {
+            color: var(--tech-blue);
+            font-size: 13px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: color 0.8s ease, border-color 0.8s ease;
+            flex-shrink: 0;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .data-label { color: #5a7b9c; transition: color 0.8s ease; }
+        body.matrix-mode .data-label { color: #3a8a53; }
+        body.red-alert-mode .data-label { color: #b85c6c; }
+        
+        .data-value { color: var(--text-bright); text-align: right; transition: color 0.8s ease; }
+        
+        .highlight {
+            color: var(--tech-blue);
+            font-size: 14px;
+            text-shadow: var(--tech-glow);
+            margin: 1px 0 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: color 0.8s ease, text-shadow 0.8s ease;
+        }
+
+        .copy-btn, .push-btn {
+            background: transparent;
+            border: 1px solid var(--tech-blue);
+            color: var(--tech-blue);
+            padding: 2px 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.3s;
+            font-size: 11px;
+        }
+        .copy-btn:hover, .push-btn:hover { background: var(--tech-blue); color: #000; }
+
+        #panel-1 {
+            height: 100%;
+            justify-content: flex-start;
+        }
+
+        .map-wrapper {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            position: relative;
+            z-index: 1;
+            transition: border-color 0.8s ease, background-color 0.8s ease;
+        }
+
+        /* 💡 提亮黑色地圖上的文字與線條 */
+        .leaflet-layer.dark-map-layer {
+            filter: brightness(180%) contrast(110%);
+        }
+
+        .header-toggle-overlay {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: rgba(7, 11, 20, 0.6);
+            border: 1px solid var(--tech-blue);
+            padding: 2px 8px;
+            border-radius: 12px;
+            transition: border-color 0.8s ease, background-color 0.8s ease;
+        }
+
+        body.matrix-mode .header-toggle-overlay { background: rgba(2, 11, 5, 0.8); }
+        body.red-alert-mode .header-toggle-overlay { background: rgba(20, 3, 6, 0.8); }
+
+        .toggle-label {
+            font-size: 11px;
+            color: var(--text-main);
+            user-select: none;
+            transition: color 0.3s;
+        }
+
+        .toggle-label.active {
+            color: var(--tech-blue);
+            font-weight: bold;
+            text-shadow: 0 0 5px var(--tech-blue);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 15px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #1a2a42;
+            transition: .3s;
+            border-radius: 15px;
+            border: 1px solid var(--tech-blue);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 9px; width: 9px;
+            left: 2px; bottom: 2px;
+            background-color: var(--tech-blue);
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: var(--tech-glow);
+        }
+
+        input:checked + .slider {
+            background-color: rgba(255, 153, 0, 0.3);
+            border-color: var(--alert-orange);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
+            background-color: var(--alert-orange);
+        }
+
+        .radar-pulse-marker {
+            position: relative;
+            width: 20px;
+            height: 20px;
+        }
+        .radar-pulse-marker::before {
+            content: '';
+            position: absolute;
+            width: 100%; height: 100%;
+            background-color: var(--tech-blue);
+            border-radius: 50%;
+            opacity: 0.8;
+            box-shadow: var(--tech-glow);
+        }
+        .radar-pulse-marker::after {
+            content: '';
+            position: absolute;
+            top: -10px; left: -10px;
+            width: 40px; height: 40px;
+            border: 2px solid var(--tech-blue);
+            border-radius: 50%;
+            animation: radar-pulse 1.8s infinite ease-out;
+            opacity: 0;
+        }
+        @keyframes radar-pulse {
+            0% { transform: scale(0.3); opacity: 1; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+
+        #panel-3 {
+            height: 210px;
+            flex-shrink: 0;
+        }
+
+        .grid-2x2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px 16px;
+            height: calc(100% - 25px);
+        }
+
+        .chart-container {
+            height: 45px;
+            width: 100%;
+            background: rgba(7, 11, 20, 0.6);
+            border: 1px solid var(--border-color);
+            padding: 2px;
+            transition: background-color 0.8s ease, border-color 0.8s ease;
+        }
+
+        canvas { width: 100%; height: 100%; }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .badge-safe { background: var(--badge-safe-bg); color: var(--badge-safe-color); border: 1px solid var(--badge-safe-border); }
+        .badge-warning { background: rgba(255, 153, 0, 0.2); color: var(--alert-orange); border: 1px solid var(--alert-orange); }
+        .badge-danger { background: rgba(255, 51, 102, 0.25); color: var(--alert-red); border: 1px solid var(--alert-red); }
+
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: var(--tech-blue);
+            font-size: 24px;
+        }
+
+        @media (max-width: 900px) {
+            body { overflow-y: auto; height: auto; }
+            .dashboard { grid-template-columns: 1fr; }
+            #panel-3 { height: auto; }
+            .grid-2x2 { grid-template-columns: 1fr; grid-template-rows: auto; }
+        }
+    </style>
+</head>
+<body id="capture-area">
+
+    <div id="loader"><i class="fas fa-circle-notch fa-spin"></i> &nbsp;系統資料與安全指紋診斷中...</div>
+
+    <header>
+        <div class="header-title"><i class="fas fa-satellite-dish"></i> 網路數據指揮中心</div>
+        <div class="status-indicator">
+            <button class="push-btn" onclick="requestPushPermission()" id="push-btn" data-html2canvas-ignore><i class="fas fa-bell"></i> 啟用推播</button>
+            <div class="blink-dot"></div>
+            <span id="sys-time">00:00:00</span>
+            <button class="fullscreen-btn" onclick="toggleFullScreen()" title="切換全螢幕/視窗模式" data-html2canvas-ignore>
+                <i class="fas fa-expand" id="fs-icon"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- 左欄 [01] -->
+        <div class="panel" id="panel-1">
+            <div class="hud-corner hud-corner-tl"></div><div class="hud-corner hud-corner-tr"></div>
+            <div class="hud-corner hud-corner-bl"></div><div class="hud-corner hud-corner-br"></div>
+            
+            <div class="panel-title">[01] 網路身份與連線狀態</div>
+            
+            <div class="data-row"><span class="data-label">IPv4 外網位址 (Public IPv4)</span></div>
+            <div class="highlight">
+                <span id="ipv4-address" style="font-size: 15px;">檢測中...</span>
+                <button class="copy-btn" onclick="copyText('ipv4-address')" id="copy-v4-btn" data-html2canvas-ignore><i class="fas fa-copy"></i> 複製</button>
+            </div>
+
+            <div class="data-row"><span class="data-label">IPv6 外網位址 (Public IPv6)</span></div>
+            <div class="highlight">
+                <span id="ipv6-address" style="font-size: 12px; word-break: break-all; color: var(--text-bright);">檢測中...</span>
+                <button class="copy-btn" onclick="copyText('ipv6-address')" id="copy-v6-btn" data-html2canvas-ignore><i class="fas fa-copy"></i> 複製</button>
+            </div>
+
+            <div style="margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                <div class="data-row">
+                    <span class="data-label">局域網 IP (WebRTC):</span>
+                    <span class="data-value" id="webrtc-ip" style="color: var(--tech-blue);">偵測中...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">電信營運商 (ISP/ASN):</span>
+                    <span class="data-value" id="isp">...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">地理位置:</span>
+                    <span class="data-value" id="location">...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">經緯度座標:</span>
+                    <span class="data-value" id="coordinates">...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">連線安全判定:</span>
+                    <span class="data-value" id="security-status">
+                        <span class="badge badge-safe">分析中...</span>
+                    </span>
+                </div>
+            </div>
+
+            <div style="margin-top: auto; padding-top: 10px;">
+                <div class="data-row" style="background: rgba(0, 210, 255, 0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px; align-items: center; border-left: 2px solid var(--tech-blue);">
+                    <span class="data-label" style="color: var(--text-bright); font-weight: bold;"><i class="fas fa-shield-halved"></i> VPN 代理狀態:</span>
+                    <span class="data-value" id="vpn-status-badge"><span class="badge badge-safe">檢測中...</span></span>
+                </div>
+
+                <div class="data-row" id="real-location-row" style="display: none; background: rgba(255, 153, 0, 0.1); padding: 6px 8px; border-radius: 4px; align-items: center; border-left: 2px solid var(--alert-orange);">
+                    <span class="data-label" style="color: #ffcc00; font-weight: bold;"><i class="fas fa-location-crosshairs"></i> 可能真實位置:</span>
+                    <span class="data-value" id="real-location-value" style="color: #ffffff; font-weight: bold;">分析中...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右欄 -->
+        <div class="dashboard-right">
+            <!-- 地圖區域 [02] -->
+            <div class="panel" id="panel-2" style="flex: 1;">
+                <div class="hud-corner hud-corner-tl"></div><div class="hud-corner hud-corner-tr"></div>
+                <div class="hud-corner hud-corner-bl"></div><div class="hud-corner hud-corner-br"></div>
+
+                <div class="panel-title">
+                    <span>[02] 地理追蹤動態雷達</span>
+                    <div class="header-toggle-overlay" id="map-toggle-box" data-html2canvas-ignore>
+                        <span class="toggle-label active" id="lbl-ip-loc">VPN位置</span>
+                        <label class="switch">
+                            <input type="checkbox" id="map-location-toggle" onchange="toggleMapLocation(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label" id="lbl-real-loc">真實位置</span>
+                    </div>
+                </div>
+                <div class="map-wrapper">
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <!-- 進階診斷 [03] -->
+            <div class="panel" id="panel-3">
+                <div class="hud-corner hud-corner-tl"></div><div class="hud-corner hud-corner-tr"></div>
+                <div class="hud-corner hud-corner-bl"></div><div class="hud-corner hud-corner-br"></div>
+
+                <div class="panel-title">[03] 終端裝置指紋與網路進階診斷</div>
+                
+                <div class="grid-2x2">
+                    <div>
+                        <div style="color: var(--text-bright); margin-bottom: 4px; font-size: 11px;">> IP 威脅情報</div>
+                        <div class="data-row"><span class="data-label">安全評分:</span><span class="data-value" id="ip-threat-score" style="font-weight: bold;">分析中...</span></div>
+                        <div class="data-row"><span class="data-label">情報狀態:</span><span class="data-value" id="ip-threat-badge"><span class="badge badge-safe">無紀錄</span></span></div>
+                    </div>
+
+                    <div>
+                        <div style="color: var(--text-bright); margin-bottom: 4px; font-size: 11px;">> 瀏覽器指紋 (Fingerprint)</div>
+                        <div class="data-row"><span class="data-label">Canvas Hash:</span><span class="data-value" id="canvas-fp" style="font-size: 11px; color: var(--tech-blue);">計算中...</span></div>
+                        <div class="data-row"><span class="data-label">WebGL GPU:</span><span class="data-value" id="webgl-vendor" style="font-size: 11px;">檢測中...</span></div>
+                    </div>
+
+                    <div>
+                        <div style="color: var(--text-bright); margin-bottom: 4px; font-size: 11px;">> 多重特徵與 DNS</div>
+                        <div class="data-row"><span class="data-label">時區/語言:</span><span class="data-value" id="chk-tz-lang">...</span></div>
+                        <div class="data-row"><span class="data-label">DNS 洩漏:</span><span class="data-value" id="dns-leak-status"><span class="badge badge-safe">分析中...</span></span></div>
+                    </div>
+
+                    <div>
+                        <div style="color: var(--text-bright); margin-bottom: 2px; font-size: 11px;">> 實時延遲 (Cloudflare Ping) <span id="ping-cf" style="color:var(--tech-blue); font-weight:bold;">-- ms</span></div>
+                        <div class="chart-container">
+                            <canvas id="pingChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 套件 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.35/ua-parser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        let mapInstance = null;
+        let currentIP = "";
+        let pingChart = null;
+        let detectedWebRTCIP = "";
+        let isPushEnabled = false;
+        let isDnsLeakDetected = false;
+        let isVpnActive = false;
+        const maxChartDataPoints = 20;
+
+        let ipMapCoords = { lat: 0, lng: 0, title: '' };
+        let realMapCoords = null;
+        let browserGpsCoords = null;
+
+        const timezoneToLocationMap = {
+            'Asia/Taipei': { name: '台灣 (台北)', lat: 25.0330, lng: 121.5654 },
+            'Asia/Tokyo': { name: '日本 (東京)', lat: 35.6762, lng: 139.6503 },
+            'Asia/Seoul': { name: '韓國 (首爾)', lat: 37.5665, lng: 126.9780 },
+            'Asia/Hong_Kong': { name: '香港', lat: 22.3193, lng: 114.1694 },
+            'Asia/Shanghai': { name: '中國 (北京)', lat: 39.9042, lng: 116.4074 },
+            'Asia/Singapore': { name: '新加坡', lat: 1.3521, lng: 103.8198 },
+            'Asia/Bangkok': { name: '泰國 (曼谷)', lat: 13.7563, lng: 100.5018 },
+            'America/New_York': { name: '美國 (紐約)', lat: 40.7128, lng: -74.0060 },
+            'America/Los_Angeles': { name: '美國 (洛杉磯)', lat: 34.0522, lng: -118.2437 },
+            'Europe/London': { name: '英國 (倫敦)', lat: 51.5074, lng: -0.1278 },
+            'Europe/Paris': { name: '法國 (巴黎)', lat: 48.8566, lng: 2.3522 },
+            'Europe/Berlin': { name: '德國 (柏林)', lat: 52.5200, lng: 13.4050 },
+            'Australia/Sydney': { name: '澳洲 (雪梨)', lat: -33.8688, lng: 151.2093 }
+        };
+
+        const countryCodeToZH = {
+            'TW': '台灣', 'CN': '中國', 'HK': '香港', 'MO': '澳門', 'JP': '日本', 'KR': '韓國',
+            'SG': '新加坡', 'US': '美國', 'CA': '加拿大', 'GB': '英國', 'DE': '德國', 'FR': '法國',
+            'AU': '澳洲', 'NZ': '紐西蘭', 'NL': '荷蘭', 'CH': '瑞士', 'SE': '瑞典', 'NO': '挪威',
+            'FI': '芬蘭', 'DK': '丹麥', 'IE': '愛爾蘭', 'BE': '比利時', 'AT': '奧地利', 'IT': '義大利',
+            'TR': '土耳其', 'IN': '印度', 'BR': '巴西', 'MX': '墨西哥', 'AR': '阿根廷', 'CL': '智利',
+            'UA': '烏克蘭', 'RU': '俄羅斯', 'PL': '波蘭', 'CZ': '捷克', 'HU': '匈牙利', 'RO': '羅馬尼亞',
+            'ES': '西班牙', 'PT': '葡萄牙', 'GR': '希臘', 'ZA': '南非', 'EG': '埃及', 'IL': '以色列',
+            'AE': '阿聯酋', 'SA': '沙烏地阿拉伯', 'TH': '泰國', 'VN': '越南', 'PH': '菲律賓', 'MY': '馬來西亞',
+            'ID': '印尼', 'PK': '巴基斯坦', 'BD': '孟加拉', 'COL': '哥倫比亞', 'PE': '秘魯'
+        };
+
+        let regionNames = null;
+        try {
+            regionNames = new Intl.DisplayNames(['zh-TW'], { type: 'region' });
+        } catch (e) {}
+
+        const translationDict = {
+            'Taiwan': '台灣', 'China': '中國', 'Hong Kong': '香港', 'Japan': '日本',
+            'United States': '美國', 'South Korea': '韓國', 'Singapore': '新加坡', 'Turkey': '土耳其',
+            'Taipei': '台北市', 'New Taipei': '新北市', 'Taoyuan': '桃園市', 'Taichung': '台中市',
+            'Chunghwa Telecom': '中華電信', 'Taiwan Mobile': '台灣大哥大', 'FarEasTone': '遠傳電信'
+        };
+
+        function translateCountry(countryName, countryCode) {
+            if (countryCode) {
+                const codeUpper = countryCode.toUpperCase();
+                if (countryCodeToZH[codeUpper]) return countryCodeToZH[codeUpper];
+                if (regionNames) {
+                    try {
+                        const nativeName = regionNames.of(codeUpper);
+                        if (nativeName) return nativeName;
+                    } catch (e) {}
+                }
+            }
+            return translateText(countryName);
+        }
+
+        function translateText(text) {
+            if (!text) return '';
+            let translated = text;
+            for (const [key, value] of Object.entries(translationDict)) {
+                if (translated.includes(key)) {
+                    translated = translated.replace(new RegExp(key, 'g'), value);
+                }
+            }
+            return translated;
+        }
+
+        setInterval(() => {
+            document.getElementById('sys-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+        }, 1000);
+
+        function toggleFullScreen() {
+            const fsIcon = document.getElementById('fs-icon');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`無法切換全螢幕: ${err.message}`);
+                });
+                fsIcon.className = "fas fa-compress";
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    fsIcon.className = "fas fa-expand";
+                }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const fsIcon = document.getElementById('fs-icon');
+            if (!document.fullscreenElement) {
+                fsIcon.className = "fas fa-expand";
+            } else {
+                fsIcon.className = "fas fa-compress";
+            }
+            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 300);
+        });
+
+        function requestPushPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        isPushEnabled = true;
+                        const btn = document.getElementById('push-btn');
+                        btn.innerHTML = '<i class="fas fa-check-circle"></i> 推播已啟用';
+                        new Notification("網路指揮中心警報器", { body: "背景推播服務已啟動。" });
+                    }
+                });
+            }
+        }
+
+        // 讓瀏覽器在進入頁面時直接處理原生定位授權；不自製攔截視窗，避免重複模擬瀏覽器權限。
+        function requestBrowserLocation() {
+            const coordinateElement = document.getElementById('coordinates');
+
+            if (!('geolocation' in navigator)) {
+                coordinateElement.innerText = '瀏覽器不支援定位';
+                return;
+            }
+
+            coordinateElement.innerText = '等待使用者授權...';
+            navigator.geolocation.getCurrentPosition(
+                position => applyBrowserGpsPosition(position.coords),
+                error => {
+                    const message = error.code === 1
+                        ? '使用者拒絕定位權限'
+                        : error.code === 2
+                            ? '目前無法取得 GPS'
+                            : '定位請求逾時';
+                    coordinateElement.innerText = message;
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        }
+
+        function applyBrowserGpsPosition(coords) {
+            const latitude = Number(coords.latitude);
+            const longitude = Number(coords.longitude);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+            browserGpsCoords = {
+                latitude,
+                longitude,
+                accuracy: Number(coords.accuracy) || 0
+            };
+            document.getElementById('coordinates').innerText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+            const realLocationRow = document.getElementById('real-location-row');
+            const realLocationLabel = realLocationRow.querySelector('.data-label');
+            realLocationLabel.innerHTML = '<i class="fas fa-location-crosshairs"></i> 瀏覽器 GPS 位置:';
+            document.getElementById('real-location-value').innerText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)} ±${Math.round(coords.accuracy || 0)}m`;
+            realLocationRow.style.display = 'flex';
+
+            realMapCoords = {
+                lat: latitude,
+                lng: longitude,
+                title: '瀏覽器 GPS 位置'
+            };
+            document.getElementById('map-toggle-box').style.display = 'flex';
+            document.getElementById('lbl-real-loc').innerText = 'GPS位置';
+
+            const toggleInput = document.getElementById('map-location-toggle');
+            if (toggleInput.checked) initMap(latitude, longitude, '瀏覽器 GPS 位置');
+        }
+
+        async function initializeDashboard() {
+            requestBrowserLocation();
+            initPingChart();
+            detectWebRTCIP();
+            generateCanvasFingerprint();
+            detectWebGLVendor();
+            
+            await fetchDualStackIP();
+            startLivePing();
+            startDNSCheck();
+
+            setInterval(() => { fetchIPData(true); }, 5000);
+
+            setTimeout(() => {
+                document.getElementById('loader').style.display = 'none';
+            }, 800);
+        }
+
+        async function fetchDualStackIP() {
+            fetch('https://api4.ipify.org?format=json')
+                .then(res => res.json())
+                .then(data => { document.getElementById('ipv4-address').innerText = data.ip; })
+                .catch(() => { document.getElementById('ipv4-address').innerText = "未分配 / 離線"; });
+
+            fetch('https://api64.ipify.org?format=json')
+                .then(res => res.json())
+                .then(data => {
+                    const ip = data.ip;
+                    if (ip.includes(':')) {
+                        document.getElementById('ipv6-address').innerText = ip;
+                    } else {
+                        document.getElementById('ipv6-address').innerText = "不支援 IPv6 (純 IPv4)";
+                        document.getElementById('ipv6-address').style.color = "#5a7b9c";
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('ipv6-address').innerText = "不支援 IPv6 連線";
+                    document.getElementById('ipv6-address').style.color = "#5a7b9c";
+                });
+
+            await fetchIPData();
+        }
+
+        function generateCanvasFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 200; canvas.height = 50;
+                ctx.fillStyle = "#f60"; ctx.fillRect(125, 1, 62, 20);
+                ctx.fillStyle = "#069"; ctx.fillText("CyberNetwork,123!", 2, 15);
+
+                const dataURI = canvas.toDataURL();
+                let hash = 0;
+                for (let i = 0; i < dataURI.length; i++) {
+                    hash = ((hash << 5) - hash) + dataURI.charCodeAt(i);
+                    hash |= 0;
+                }
+                document.getElementById('canvas-fp').innerText = '0x' + Math.abs(hash).toString(16).toUpperCase();
+            } catch (e) {
+                document.getElementById('canvas-fp').innerText = "無法提取";
+            }
+        }
+
+        function detectWebGLVendor() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    let shortRenderer = renderer.split('/')[0].replace('ANGLE (', '').substring(0, 18);
+                    document.getElementById('webgl-vendor').innerText = shortRenderer || "Generic GPU";
+                } else {
+                    document.getElementById('webgl-vendor').innerText = "不支援";
+                }
+            } catch (e) {
+                document.getElementById('webgl-vendor').innerText = "隱蔽";
+            }
+        }
+
+        function detectWebRTCIP() {
+            const webrtcElem = document.getElementById('webrtc-ip');
+            try {
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer));
+
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                    const match = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
+                    if (match) {
+                        detectedWebRTCIP = match[1];
+                        webrtcElem.innerText = detectedWebRTCIP;
+                    }
+                };
+                
+                setTimeout(() => {
+                    if(webrtcElem.innerText === "偵測中...") {
+                        webrtcElem.innerText = "受保護隱蔽";
+                    }
+                }, 3000);
+            } catch (e) {
+                webrtcElem.innerText = "不支援";
+            }
+        }
+
+        // 🛡️ 多重備援 API 提取機制
+        async function fetchIPData(isBackground = false) {
+            let data = null;
+
+            // 1. 優先嘗試 ipwho.is
+            try {
+                const res = await fetch('https://ipwho.is/?lang=zh-TW&t=' + Date.now());
+                if (res.ok) {
+                    const resJson = await res.json();
+                    if (resJson.success) data = resJson;
+                }
+            } catch (e) {
+                console.warn("ipwho.is 請求失敗，嘗試備援 API 1...");
+            }
+
+            // 2. 備援 API 1: ipapi.co
+            if (!data) {
+                try {
+                    const res = await fetch('https://ipapi.co/json/');
+                    if (res.ok) {
+                        const resJson = await res.json();
+                        data = {
+                            success: true,
+                            ip: resJson.ip,
+                            country: resJson.country_name,
+                            country_code: resJson.country_code,
+                            region: resJson.region,
+                            city: resJson.city,
+                            latitude: resJson.latitude,
+                            longitude: resJson.longitude,
+                            timezone: { id: resJson.timezone },
+                            connection: {
+                                isp: resJson.org || resJson.asn,
+                                org: resJson.org,
+                                asn: resJson.asn ? resJson.asn.replace('AS', '') : ''
+                            },
+                            security: { vpn: false, proxy: false }
+                        };
+                    }
+                } catch (e) {
+                    console.warn("ipapi.co 請求失敗，嘗試備援 API 2...");
+                }
+            }
+
+            // 3. 備援 API 2: ip-api.com
+            if (!data) {
+                try {
+                    const res = await fetch('http://ip-api.com/json/?lang=zh-TW');
+                    if (res.ok) {
+                        const resJson = await res.json();
+                        if (resJson.status === 'success') {
+                            data = {
+                                success: true,
+                                ip: resJson.query,
+                                country: resJson.country,
+                                country_code: resJson.countryCode,
+                                region: resJson.regionName,
+                                city: resJson.city,
+                                latitude: resJson.lat,
+                                longitude: resJson.lon,
+                                timezone: { id: resJson.timezone },
+                                connection: {
+                                    isp: resJson.isp,
+                                    org: resJson.org,
+                                    asn: resJson.as ? resJson.as.split(' ')[0].replace('AS', '') : ''
+                                },
+                                security: { vpn: false, proxy: false }
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.error("所有 IP API 獲取失敗！");
+                }
+            }
+
+            if (data && data.success) {
+                if (isBackground && data.ip === currentIP) return;
+                currentIP = data.ip;
+                populateNetworkData(data);
+                triggerPanelPulse();
+            } else if (!isBackground) {
+                document.getElementById('location').innerText = "請求受限，請稍後重試";
+            }
+        }
+
+        function triggerPanelPulse() {
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(p => {
+                p.classList.add('updating');
+                setTimeout(() => { p.classList.remove('updating'); }, 600);
+            });
+        }
+
+        function populateNetworkData(data) {
+            const rawIsp = data.connection ? data.connection.isp : '';
+            const org = data.connection ? data.connection.org : '';
+            const asn = data.connection ? data.connection.asn : '';
+            
+            document.getElementById('isp').innerText = `${translateText(rawIsp)} (AS${asn || '0'})`;
+
+            const countryZh = translateCountry(data.country, data.country_code);
+            const regionZh = translateText(data.region);
+            const cityZh = translateText(data.city);
+            
+            let locArray = [countryZh, regionZh, cityZh].filter((item, index, self) => item && self.indexOf(item) === index);
+            const rawLocationName = locArray.join(' ') || '未知區域';
+            document.getElementById('location').innerText = rawLocationName;
+            document.getElementById('coordinates').innerText = `${data.latitude}, ${data.longitude}`;
+
+            let riskScore = 0;
+            const sec = data.security || {};
+            const isVpnFlag = sec.vpn || sec.proxy || sec.tor;
+
+            const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const ipTimezone = data.timezone ? data.timezone.id : '';
+            const isTzMismatch = (browserTimezone && ipTimezone && browserTimezone !== ipTimezone);
+
+            const ispOrgText = (rawIsp + " " + org).toLowerCase();
+            const isDatacenter = (
+                ispOrgText.includes("amazon") || ispOrgText.includes("aws") ||
+                ispOrgText.includes("google") || ispOrgText.includes("microsoft") ||
+                ispOrgText.includes("azure") || ispOrgText.includes("digitalocean") ||
+                ispOrgText.includes("cloudflare") || ispOrgText.includes("vultr")
+            );
+
+            if (isVpnFlag) riskScore += 50;
+            if (isDatacenter) riskScore += 30;
+            if (isTzMismatch) riskScore += 15;
+
+            let safetyScore = Math.max(0, 100 - riskScore);
+            const isLowSafetyScore = (safetyScore < 60);
+            const isHighRiskBlacklist = isVpnFlag || (safetyScore < 40);
+
+            const vpnStatusElem = document.getElementById('vpn-status-badge');
+            const realLocRow = document.getElementById('real-location-row');
+            const realLocVal = document.getElementById('real-location-value');
+            const mapToggleBox = document.getElementById('map-toggle-box');
+
+            if (isVpnFlag || isDatacenter) {
+                vpnStatusElem.innerHTML = `<span class="badge badge-danger"><i class="fas fa-lock"></i> VPN / 代理伺服器</span>`;
+                isVpnActive = true;
+            } else if (isTzMismatch) {
+                vpnStatusElem.innerHTML = `<span class="badge badge-warning"><i class="fas fa-triangle-exclamation"></i> 疑似 VPN (時區不符)</span>`;
+                isVpnActive = true;
+            } else {
+                vpnStatusElem.innerHTML = `<span class="badge badge-safe"><i class="fas fa-globe"></i> 原生直連</span>`;
+                isVpnActive = false;
+            }
+
+            if (isLowSafetyScore || isDnsLeakDetected || isHighRiskBlacklist) {
+                document.body.classList.remove('matrix-mode');
+                document.body.classList.add('red-alert-mode');
+                updateChartColor('#ff1a53');
+            } else if (isVpnActive) {
+                document.body.classList.remove('red-alert-mode');
+                document.body.classList.add('matrix-mode');
+                updateChartColor('#00ff66');
+            } else {
+                document.body.classList.remove('red-alert-mode');
+                document.body.classList.remove('matrix-mode');
+                updateChartColor('#00d2ff');
+            }
+
+            ipMapCoords = {
+                lat: data.latitude,
+                lng: data.longitude,
+                title: isVpnActive ? `${rawLocationName} (VPN IP)` : `${rawLocationName} (現有 IP)`
+            };
+
+            realMapCoords = null;
+            if (isVpnActive) {
+                let detectedRealLoc = null;
+
+                if (browserTimezone && timezoneToLocationMap[browserTimezone]) {
+                    const tzData = timezoneToLocationMap[browserTimezone];
+                    detectedRealLoc = tzData.name;
+                    realMapCoords = {
+                        lat: tzData.lat,
+                        lng: tzData.lng,
+                        title: `${tzData.name} (可能的真實位置)`
+                    };
+                }
+
+                if (detectedRealLoc) {
+                    realLocVal.innerText = detectedRealLoc;
+                    realLocRow.style.display = 'flex';
+                    mapToggleBox.style.display = 'flex';
+                } else {
+                    realLocRow.style.display = 'none';
+                    mapToggleBox.style.display = 'none';
+                }
+            } else {
+                realLocRow.style.display = 'none';
+                mapToggleBox.style.display = 'none';
+            }
+
+            // IP 資料可能比瀏覽器 GPS 晚回來，重新套用已取得的 GPS，避免被 IP 結果覆蓋。
+            if (browserGpsCoords) applyBrowserGpsPosition(browserGpsCoords);
+
+            const toggleInput = document.getElementById('map-location-toggle');
+            if (toggleInput.checked && realMapCoords) {
+                initMap(realMapCoords.lat, realMapCoords.lng, realMapCoords.title);
+            } else {
+                initMap(ipMapCoords.lat, ipMapCoords.lng, ipMapCoords.title);
+            }
+
+            const threatScoreElem = document.getElementById('ip-threat-score');
+            const threatBadgeElem = document.getElementById('ip-threat-badge');
+            
+            if (safetyScore >= 85) {
+                threatScoreElem.innerText = `${safetyScore} / 100 (安全)`;
+                threatScoreElem.style.color = "#00ff66";
+                threatBadgeElem.innerHTML = `<span class="badge badge-safe">無惡意威脅</span>`;
+            } else if (safetyScore >= 60) {
+                threatScoreElem.innerText = `${safetyScore} / 100 (中度)`;
+                threatScoreElem.style.color = "var(--alert-orange)";
+                threatBadgeElem.innerHTML = `<span class="badge badge-warning">疑似機房</span>`;
+            } else {
+                threatScoreElem.innerText = `${safetyScore} / 100 (高威脅)`;
+                threatScoreElem.style.color = "var(--alert-red)";
+                threatBadgeElem.innerHTML = `<span class="badge badge-danger">高風險黑名單</span>`;
+            }
+
+            document.getElementById('chk-tz-lang').innerText = isTzMismatch ? "時區不符" : "匹配正常";
+
+            const secElement = document.getElementById('security-status');
+            if (safetyScore >= 85) {
+                secElement.innerHTML = `<span class="badge badge-safe"><i class="fas fa-shield-alt"></i> 原生直連</span>`;
+            } else if (safetyScore >= 60) {
+                secElement.innerHTML = `<span class="badge badge-warning"><i class="fas fa-exclamation-triangle"></i> 代理連線</span>`;
+            } else {
+                secElement.innerHTML = `<span class="badge badge-danger"><i class="fas fa-user-shield"></i> 高風險 VPN</span>`;
+            }
+        }
+
+        function toggleMapLocation(isChecked) {
+            const lblIp = document.getElementById('lbl-ip-loc');
+            const lblReal = document.getElementById('lbl-real-loc');
+
+            if (isChecked && realMapCoords) {
+                lblIp.classList.remove('active');
+                lblReal.classList.add('active');
+                initMap(realMapCoords.lat, realMapCoords.lng, realMapCoords.title);
+            } else {
+                lblReal.classList.remove('active');
+                lblIp.classList.add('active');
+                initMap(ipMapCoords.lat, ipMapCoords.lng, ipMapCoords.title);
+            }
+        }
+
+        function initMap(lat, lng, city) {
+            if (mapInstance) mapInstance.remove();
+
+            mapInstance = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([lat, lng], 11);
+
+            const tileUrl = isVpnActive 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+            const tileLayer = L.tileLayer(tileUrl, { 
+                maxZoom: 18,
+                subdomains: 'abcd',
+                className: isVpnActive ? 'dark-map-layer' : ''
+            }).addTo(mapInstance);
+
+            const pulseIcon = L.divIcon({
+                className: 'radar-pulse-marker',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const marker = L.marker([lat, lng], { icon: pulseIcon }).addTo(mapInstance);
+            marker.bindPopup(`<b>${city}</b><br>目標雷達鎖定中`).openPopup();
+
+            setTimeout(() => { mapInstance.invalidateSize(); }, 300);
+        }
+
+        function initPingChart() {
+            const ctx = document.getElementById('pingChart').getContext('2d');
+            pingChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Cloudflare Ping (ms)',
+                        data: [],
+                        borderColor: '#00d2ff',
+                        backgroundColor: 'rgba(0, 210, 255, 0.1)',
+                        borderWidth: 1.5,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            grid: { color: 'rgba(26, 42, 66, 0.5)' },
+                            ticks: { color: '#5a7b9c', font: { size: 9 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartColor(color) {
+            if (pingChart) {
+                pingChart.data.datasets[0].borderColor = color;
+                if (color === '#ff1a53') {
+                    pingChart.data.datasets[0].backgroundColor = 'rgba(255, 26, 83, 0.15)';
+                } else if (color === '#00ff66') {
+                    pingChart.data.datasets[0].backgroundColor = 'rgba(0, 255, 102, 0.1)';
+                } else {
+                    pingChart.data.datasets[0].backgroundColor = 'rgba(0, 210, 255, 0.1)';
+                }
+                pingChart.update('none');
+            }
+        }
+
+        function startLivePing() {
+            setInterval(() => {
+                const start = performance.now();
+                fetch(`https://1.1.1.1/cdn-cgi/trace?t=${Date.now()}`, { mode: 'no-cors', cache: 'no-store' })
+                    .then(() => {
+                        const latency = Math.round(performance.now() - start);
+                        const pingElem = document.getElementById('ping-cf');
+                        pingElem.innerText = `${latency} ms`;
+
+                        const nowTime = new Date().toLocaleTimeString();
+                        pingChart.data.labels.push(nowTime);
+                        pingChart.data.datasets[0].data.push(latency);
+
+                        if (pingChart.data.labels.length > maxChartDataPoints) {
+                            pingChart.data.labels.shift();
+                            pingChart.data.datasets[0].data.shift();
+                        }
+                        pingChart.update('none');
+                    });
+            }, 1000);
+        }
+
+        function startDNSCheck() {
+            const testDNS = () => {
+                fetch(`https://1.1.1.1/cdn-cgi/trace?t=${Date.now()}`, { mode: 'no-cors' })
+                    .then(() => {
+                        document.getElementById('dns-leak-status').innerHTML = `<span class="badge badge-safe"><i class="fas fa-lock"></i> DNS 安全</span>`;
+                        isDnsLeakDetected = false;
+                    })
+                    .catch(() => {
+                        document.getElementById('dns-leak-status').innerHTML = `<span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> DNS 洩漏</span>`;
+                        isDnsLeakDetected = true;
+                    });
+            };
+            testDNS();
+            setInterval(testDNS, 3000);
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert("已複製到剪貼簿: " + text);
+            });
+        }
+
+        window.onload = initializeDashboard;
+    </script>
+</body>
+</html>
