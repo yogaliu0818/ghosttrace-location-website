@@ -596,7 +596,18 @@
         let browserGpsCoords = null;
         const GHOSTTRACE_RELAY_URL = 'https://ghosttrace-location-relay.yogaliu0818.workers.dev';
         const GHOSTTRACE_CHANNEL = new URLSearchParams(window.location.search).get('channel')?.trim().toUpperCase() || 'DEMO-7F2K';
+        const GHOSTTRACE_DEVICE_INFO = detectBrowserDeviceInfo();
         let browserGpsWatchId = null;
+
+        function detectBrowserDeviceInfo() {
+            const ua = navigator.userAgent || '';
+            const android = ua.match(/Android\s[^;]+;\s*([^;)]+?)(?:\s+Build\/[^;)]+)?[;)]/i);
+            const name = android?.[1]?.trim() || (/iPhone/i.test(ua) ? 'iPhone' : /iPad/i.test(ua) ? 'iPad' : /Android/i.test(ua) ? 'Android device' : 'Unknown device');
+            const type = /Mobile|iPhone|Android/i.test(ua) ? 'Mobile' : /Tablet|iPad/i.test(ua) ? 'Tablet' : 'Desktop';
+            const platform = /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' : navigator.platform || 'Unknown';
+            const browser = /Edg\//i.test(ua) ? 'Edge' : /Firefox\//i.test(ua) ? 'Firefox' : /CriOS|Chrome\//i.test(ua) ? 'Chrome' : /Safari\//i.test(ua) ? 'Safari' : 'Browser';
+            return { name, type, platform, browser };
+        }
 
         const timezoneToLocationMap = {
             'Asia/Taipei': { name: '台灣 (台北)', lat: 25.0330, lng: 121.5654 },
@@ -737,7 +748,8 @@
                 channel: GHOSTTRACE_CHANNEL,
                 latitude: Number(coords.latitude),
                 longitude: Number(coords.longitude),
-                accuracy: Number(coords.accuracy) || 0
+                accuracy: Number(coords.accuracy) || 0,
+                device: GHOSTTRACE_DEVICE_INFO
             };
             fetch(`${GHOSTTRACE_RELAY_URL}/api/location`, {
                 method: 'POST',
